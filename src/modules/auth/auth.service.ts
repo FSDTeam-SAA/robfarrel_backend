@@ -59,6 +59,7 @@ export class AuthService {
       data: {
         _id:          user._id,
         name:         user.name,
+        companyName: user.companyName,
         email:        user.email,
         role:         user.role,
         profileImage: user.profileImage,

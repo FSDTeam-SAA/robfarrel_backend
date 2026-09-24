@@ -21,6 +21,7 @@ export const AddressSchema = SchemaFactory.createForClass(Address);
 @Schema({ timestamps: true })
 export class User {
   @Prop({ required: true }) name: string;
+  @Prop({ trim: true }) companyName?: string;
 
   @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true })
   email: string;
@@ -34,7 +35,7 @@ export class User {
   @Prop({ enum: ['male', 'female', 'other'], default: 'male' })
   gender: string;
 
-  @Prop({ type: String, enum: Object.values(RoleType), default: RoleType.USER })
+  @Prop({ type: String, enum: Object.values(RoleType), default: RoleType.TENANT })
   role: RoleType;
 
   @Prop({ default: null }) stripeAccountId?: string;

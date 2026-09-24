@@ -10,6 +10,7 @@ import { Transform } from 'class-transformer';
 export class UpdateUserDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() username?: string;
+  @IsOptional() @IsString() companyName?: string;
   @IsOptional() @IsDateString() dob?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsEnum(['male', 'female', 'other']) gender?: string;
@@ -30,7 +31,7 @@ export class GetUsersQueryDto {
 }
 
 export class AdminUpdateUserDto extends UpdateUserDto {
-  @IsOptional() @IsEnum(['USER', 'ADMIN']) role?: string;
+  @IsOptional() @IsEnum(['LANDLORD', 'TENANT', 'ADMIN']) role?: string;
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

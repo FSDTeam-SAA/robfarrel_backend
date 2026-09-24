@@ -5,7 +5,9 @@ import {
   MinLength,
   IsNumberString,
   Length,
+  IsIn,
 } from 'class-validator';
+import { RoleType } from '../../../common/enums/role.enum';
 
 /**
  * Auth DTOs
@@ -23,6 +25,13 @@ export class RegisterDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+
+  @IsString()
+ @IsNotEmpty()
+ companyName: string;
+
+ @IsIn([RoleType.LANDLORD, RoleType.TENANT])
+  role: RoleType;
 
   @IsString()
   @MinLength(6)
