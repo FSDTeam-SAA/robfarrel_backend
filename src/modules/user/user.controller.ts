@@ -39,9 +39,9 @@ const multerStorage = diskStorage({
   },
 });
 
-@Controller('user')
-@UseGuards(JwtAuthGuard)
-export class UserController {
+  @Controller('user')
+  @UseGuards(JwtAuthGuard)
+  export class UserController {
   constructor(private readonly userService: UserService) {}
 
   // ─── Admin Routes ──────────

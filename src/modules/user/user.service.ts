@@ -24,7 +24,7 @@ export class UserService {
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 10);
     const filter = createFilter(query.search, query.date);
-    filter.role = RoleType.USER;
+    filter.role = { $in: [RoleType.LANDLORD, RoleType.TENANT] };
 
     const total = await this.userModel.countDocuments(filter);
     const users = await this.userModel
