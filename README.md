@@ -1,6 +1,6 @@
-# NestJS Production Boilerplate v3
+# robfarrel_backend
 
-A clean, production-ready NestJS boilerplate with MongoDB, JWT authentication, role-based access control, rate limiting, file uploads, and email support. Built to scale without over-engineering.
+A clean, production-ready NestJS backend with MongoDB, JWT authentication, role-based access control, rate limiting, file uploads, and email support. Built to scale without over-engineering.
 
 ---
 
