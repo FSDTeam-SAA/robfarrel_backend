@@ -84,7 +84,7 @@ export class HelpSupportService {
 
     if (!ticket) throw new HttpException('Ticket not found', HttpStatus.NOT_FOUND);
 
-    if (role !== RoleType.ADMIN && ticket.user._id.toString() !== userId) {
+        if (role !== RoleType.ADMIN && ticket.user._id.toString() !== userId.toString()) {
       throw new ForbiddenException('You cannot access this ticket');
     }
 
@@ -107,7 +107,7 @@ export class HelpSupportService {
     const ticket = await this.helpSupportModel.findById(ticketId);
     if (!ticket) throw new HttpException('Ticket not found', HttpStatus.NOT_FOUND);
 
-    if (role !== RoleType.ADMIN && ticket.user.toString() !== userId) {
+        if (role !== RoleType.ADMIN && ticket.user.toString() !== userId.toString()) {
       throw new ForbiddenException('You cannot reply to this ticket');
     }
 
