@@ -36,6 +36,13 @@ export class CreditPlanController {
     return this.creditPlanService.getAll();
   }
 
+  @Get('admin/overview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  getAdminOverview() {
+    return this.creditPlanService.getAdminOverview();
+  }
+
   @Public()
   @Get(':id')
   getSingle(@Param('id') id: string) {
@@ -59,10 +66,5 @@ export class CreditPlanController {
     return this.creditPlanService.delete(id);
   }
 
-@Get('admin/overview')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN)
-  getAdminOverview() {
-    return this.creditPlanService.getAdminOverview();
-  }
+
 }
