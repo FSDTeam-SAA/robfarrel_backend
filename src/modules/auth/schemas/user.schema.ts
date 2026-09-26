@@ -53,6 +53,7 @@ export class User {
   @Prop({ default: false }) isVerified: boolean;
 
   @Prop({ default: null }) refreshToken?: string;
+  @Prop({ default: 0 }) creditBalance: number;
 
   @Prop({ default: false }) hasActiveSubscription: boolean;
   @Prop({ default: null })  subscriptionExpireDate?: Date;

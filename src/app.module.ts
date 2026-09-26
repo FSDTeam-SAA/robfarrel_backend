@@ -9,7 +9,8 @@ import { UserModule } from './modules/user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './infrastructure/database/database.module';
-
+import { CreditPlanModule } from './modules/credit-plan/credit-plan.module';
+import { CreditPurchaseModule } from './modules/credit-purchase/credit-purchase.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,6 +33,8 @@ import { DatabaseModule } from './infrastructure/database/database.module';
     DatabaseModule,
     AuthModule,
     UserModule,
+    CreditPlanModule,
+    CreditPurchaseModule,
   ],
   controllers: [AppController],
   providers: [
