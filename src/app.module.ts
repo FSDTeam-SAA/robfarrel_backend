@@ -11,6 +11,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { CreditPlanModule } from './modules/credit-plan/credit-plan.module';
 import { CreditPurchaseModule } from './modules/credit-purchase/credit-purchase.module';
+import { HelpSupportModule } from './modules/help-support/help-support.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -35,6 +36,7 @@ import { CreditPurchaseModule } from './modules/credit-purchase/credit-purchase.
     UserModule,
     CreditPlanModule,
     CreditPurchaseModule,
+    HelpSupportModule,
   ],
   controllers: [AppController],
   providers: [

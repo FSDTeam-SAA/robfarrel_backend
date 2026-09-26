@@ -134,4 +134,19 @@ export class CreditPurchaseService {
     };
   }
 
+    async getMemberDetail(userId: string) {
+    const user = await this.userModel.findById(userId).select('-password -refreshToken -__v');
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    const purchases = await this.transactionModel
+      .find({ user: userId, status: 'completed' })
+      .populate('plan', 'title discountedPrice creditVolume')
+      .sort({ createdAt: -1 });
+
+    return {
+      message: 'Member details fetched successfully',
+      data: { user, purchases },
+    };
+  }
+
 }
