@@ -53,4 +53,10 @@ export class CreditPurchaseController {
     return this.creditPurchaseService.getAllPurchases(query);
   }
 
+  @Get('members/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  getMemberDetail(@Param('id') id: string) {
+    return this.creditPurchaseService.getMemberDetail(id);
+  }
 }
