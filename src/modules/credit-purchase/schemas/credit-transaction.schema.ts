@@ -16,6 +16,7 @@ export class CreditTransaction {
   status: string;
 
   @Prop({ default: null }) stripeSessionId?: string;
+  @Prop({ default: null }) stripePaymentIntentId?: string;
 }
 
 export const CreditTransactionSchema = SchemaFactory.createForClass(CreditTransaction);

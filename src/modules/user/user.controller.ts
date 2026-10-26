@@ -24,7 +24,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RoleType } from '../../common/enums/role.enum';
-import { GetUsersQueryDto, UpdateUserDto, AdminUpdateUserDto } from './dto/user.dto';
+import { GetUsersQueryDto, UpdateUserDto, AdminUpdateUserDto, SuspendUserDto } from './dto/user.dto';
 
 // ─── Multer Storage Config ───────────
 const multerStorage = diskStorage({
@@ -202,6 +202,13 @@ const multerStorage = diskStorage({
   @Roles(RoleType.ADMIN)
   adminGetUser(@Param('id') id: string) {
     return this.userService.adminGetUserById(id);
+  }
+
+  @Put(':id/suspend')
+  @UseGuards(RolesGuard)
+  @Roles(RoleType.ADMIN)
+  suspend(@Param('id') id: string, @Body() dto: SuspendUserDto) {
+    return this.userService.suspendUser(id, dto.isSuspended);
   }
 
   @Put(':id')

@@ -28,6 +28,11 @@ export class GetUsersQueryDto {
   @IsOptional() @IsString() limit?: string;
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() date?: string;
+  @IsOptional() @IsString() role?: string;
+}
+
+export class SuspendUserDto {
+  @IsBoolean() isSuspended: boolean;
 }
 
 export class AdminUpdateUserDto extends UpdateUserDto {
