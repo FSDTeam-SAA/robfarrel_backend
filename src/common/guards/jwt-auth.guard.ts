@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-
+import { ForbiddenException } from '@nestjs/common';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { USER_SELECT_FIELDS } from '../../core/constants';
 import { User, UserDocument } from '../../modules/auth/schemas/user.schema';
@@ -40,12 +40,12 @@ export class JwtAuthGuard implements CanActivate {
 
       const user = await this.userModel.findById(decoded._id).select(USER_SELECT_FIELDS);
       if (!user) throw new UnauthorizedException('User not found');
-      if (user.isSuspended) throw new UnauthorizedException('Your account is suspended');
+      if (user.isSuspended) throw new ForbiddenException('Your account is suspended');
 
       request.user = user;
       return true;
     } catch (err) {
-      if (err instanceof UnauthorizedException) throw err;
+      if (err instanceof UnauthorizedException || err instanceof ForbiddenException) throw err;
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

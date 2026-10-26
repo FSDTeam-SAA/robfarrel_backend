@@ -95,10 +95,11 @@ export class CreditPurchaseService {
       const session = event.data.object as any;
       const { userId, creditVolume } = session.metadata;
 
-      const transaction = await this.transactionModel.findOne({
+            const transaction = await this.transactionModel.findOne({
         stripeSessionId: session.id,
       });
       if (!transaction) return { received: true };
+      if (transaction.status === 'completed') return { received: true };   // ← add here
 
       transaction.status = 'completed';
       transaction.stripePaymentIntentId = session.payment_intent;
