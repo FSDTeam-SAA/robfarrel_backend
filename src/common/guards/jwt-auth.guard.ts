@@ -40,6 +40,7 @@ export class JwtAuthGuard implements CanActivate {
 
       const user = await this.userModel.findById(decoded._id).select(USER_SELECT_FIELDS);
       if (!user) throw new UnauthorizedException('User not found');
+      if (user.isSuspended) throw new UnauthorizedException('Your account is suspended');
 
       request.user = user;
       return true;

@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../auth/schemas/user.schema';
 import { RoleType } from '../../common/enums/role.enum';
 import { createFilter, createPaginationInfo, createMeta } from '../../common/utils/pagination.util';
-import { GetUsersQueryDto, UpdateUserDto, AdminUpdateUserDto } from './dto/user.dto';
+import { GetUsersQueryDto, UpdateUserDto, AdminUpdateUserDto, SuspendUserDto } from './dto/user.dto';
 import { CloudinaryService } from '../../infrastructure/cloudinary/cloudinary.service';
 import { USER_LIST_FIELDS } from '../../core/constants';
 
@@ -25,6 +25,7 @@ export class UserService {
     const limit = Number(query.limit || 10);
     const filter = createFilter(query.search, query.date);
     filter.role = { $in: [RoleType.LANDLORD, RoleType.TENANT] };
+    if (query.role) filter.role = query.role;
 
     const total = await this.userModel.countDocuments(filter);
     const users = await this.userModel
@@ -298,5 +299,13 @@ export class UserService {
     const deleted = await this.userModel.findByIdAndDelete(id);
     if (!deleted) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     return { message: 'User deleted successfully', data: null };
+  }
+
+  async suspendUser(id: string, isSuspended: boolean) {
+    const user = await this.userModel
+      .findByIdAndUpdate(id, { isSuspended, ...(isSuspended && { refreshToken: null }) }, { new: true })
+      .select('-password -refreshToken -__v');
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    return { message: isSuspended ? 'User suspended' : 'User activated', data: user };
   }
 }

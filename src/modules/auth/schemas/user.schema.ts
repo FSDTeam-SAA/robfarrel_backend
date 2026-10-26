@@ -51,6 +51,7 @@ export class User {
   @Prop({ default: false }) otpVerified: boolean;
   @Prop({ default: null })  resetExpires?: Date;
   @Prop({ default: false }) isVerified: boolean;
+  @Prop({ default: false }) isSuspended: boolean;
 
   @Prop({ default: null }) refreshToken?: string;
   @Prop({ default: 0 }) creditBalance: number;

@@ -78,6 +78,8 @@ export class AuthService {
       throw new HttpException('Invalid password', HttpStatus.BAD_REQUEST);
     }
 
+    if (user.isSuspended) throw new HttpException('Your account is suspended', HttpStatus.FORBIDDEN);
+
     const payload      = { _id: user._id.toString(), role: user.role };
     const refreshToken = this.issueRefreshToken(payload);
     user.refreshToken  = refreshToken;

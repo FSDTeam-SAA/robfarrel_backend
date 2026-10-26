@@ -13,6 +13,7 @@ import { CreditPlanModule } from './modules/credit-plan/credit-plan.module';
 import { CreditPurchaseModule } from './modules/credit-purchase/credit-purchase.module';
 import { HelpSupportModule } from './modules/help-support/help-support.module';
 import { PropertyAnalysisModule } from './modules/property-analysis/property-analysis.module';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -39,6 +40,7 @@ import { PropertyAnalysisModule } from './modules/property-analysis/property-ana
     CreditPurchaseModule,
     HelpSupportModule,
     PropertyAnalysisModule,
+    AdminDashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -101,6 +101,7 @@ export class CreditPurchaseService {
       if (!transaction) return { received: true };
 
       transaction.status = 'completed';
+      transaction.stripePaymentIntentId = session.payment_intent;
       await transaction.save();
 
       // ── Add credits to the buyer's account ──
@@ -116,7 +117,7 @@ export class CreditPurchaseService {
   async getAllPurchases(query: GetCreditPurchasesQueryDto) {
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 10);
-    const filter = { ...createFilter(query.search, query.date), status: 'completed' };
+    const filter = { ...createFilter(undefined, query.date), status: 'completed' };
 
     const total = await this.transactionModel.countDocuments(filter);
     const purchases = await this.transactionModel
