@@ -7,6 +7,7 @@ import {
   CreditTransactionDocument,
 } from '../credit-purchase/schemas/credit-transaction.schema';
 import { RoleType } from '../../common/enums/role.enum';
+import { CreditBurnService } from '../ai/credit-burn.service';
 
 const MEMBER_ROLES = { $in: [RoleType.LANDLORD, RoleType.TENANT] };
 const pct = (current: number, previous: number) =>
@@ -18,6 +19,7 @@ export class AdminDashboardService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(CreditTransaction.name)
     private readonly txModel: Model<CreditTransactionDocument>,
+    private readonly creditBurn: CreditBurnService,
   ) {}
 
   // ─── API 1: cards ───────────────────────────────────────
@@ -45,6 +47,11 @@ export class AdminDashboardService {
       return r?.total || 0;
     };
     const [revThis, revLast] = await Promise.all([revenueOf(thisMonth), revenueOf(lastMonth, thisMonth)]);
+    const [creditsTotal, creditsThis, creditsLast] = await Promise.all([
+      this.creditBurn.creditsConsumed(),
+      this.creditBurn.creditsConsumed(thisMonth),
+      this.creditBurn.creditsConsumed(lastMonth, thisMonth),
+    ]);
 
     return {
       message: 'Dashboard cards fetched successfully',
@@ -52,7 +59,11 @@ export class AdminDashboardService {
         totalUsers: { value: totalUsers, newThisMonth, momPercent: pct(newThisMonth, newLastMonth) },
         activeSubscribers: { value: subscribers.length, newThisMonth: newSubscribers.length },
         monthlyRevenue: { value: revThis, momPercent: pct(revThis, revLast) },
-        creditsConsumed: { value: 0 }, // TODO: wire when credits can be spent
+        creditsConsumed: {
+          value: creditsTotal,
+          thisMonth: creditsThis,
+          momPercent: pct(creditsThis, creditsLast),
+        },
       },
     };
   }

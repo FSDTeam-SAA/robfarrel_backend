@@ -210,6 +210,22 @@ All routes prefixed with `/api/v1`.
 
 ---
 
+## AI Analysis & Credit Burn
+
+Frontend → backend → AI service → backend (store run, burn credits) → frontend. Every run is stored in `airuns`; every charge in `creditusages`.
+
+| Method | Route | Who | Notes |
+|---|---|---|---|
+| POST | `/ai/market/analyze`, `/ai/fit-score`, `/ai/concepts/generate`, `/ai/cost/estimate`, `/ai/space-plan`, `/ai/report/narrative` | Landlord, Tenant | Sync. Body: `propertyAnalysisId` and/or `project` (AI project fields; override the mapped ones), plus `concept_id`, `market_snapshot`, `images` or `report_inputs` per module |
+| POST | `/ai/property-match` | Landlord, Tenant | Sync. Body: `requirements`, `reference_analysis_id`, `statuses`, `limit`, `explain` |
+| POST | `/ai/visualize`, `/ai/analysis/run` | Landlord, Tenant | Async (202). Returns `runId`; poll `GET /ai/runs/:id` until `status` is completed/partial/failed |
+| GET | `/ai/runs`, `/ai/runs/:id` | Owner (admin may read any run) | Run history, results, `totalTokens`, `creditsCharged` |
+| POST | `/ai/callback` | AI service only | HMAC-signed (`X-Signature`, `X-Signature-Timestamp`); not for the frontend |
+| GET | `/credit-usage/me` | Landlord, Tenant | Balance, totals and per-run credit burn |
+| GET | `/credit-usage` | Admin | Everyone's credit burn; filter by `userId`, `module`, `date` |
+
+**Credit burn:** the AI service returns `total_tokens` for each run. Credits burned = `ceil(total_tokens / AI_TOKENS_PER_CREDIT)` (default 1,000 tokens per credit), charged once per run when it finishes `completed` or `partial`; `failed` runs are free. A run needs a balance of at least `AI_MIN_CREDITS_TO_RUN` to start (otherwise `402`), and a charge never takes the balance below 0. Visualization images are moved to Cloudinary (`results.image_urls`).
+
 ## Request & Response Format
 
 ### Sending a request

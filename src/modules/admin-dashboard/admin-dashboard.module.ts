@@ -5,6 +5,7 @@ import { AdminDashboardService } from './admin-dashboard.service';
 import { User, UserSchema } from '../auth/schemas/user.schema';
 import { CreditTransaction, CreditTransactionSchema } from '../credit-purchase/schemas/credit-transaction.schema';
 import { AuthModule } from '../auth/auth.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: CreditTransaction.name, schema: CreditTransactionSchema },
     ]),
     AuthModule,
+    AiModule,
   ],
   controllers: [AdminDashboardController],
   providers: [AdminDashboardService],
