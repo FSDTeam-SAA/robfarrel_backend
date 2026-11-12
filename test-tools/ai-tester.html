@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI API Tester</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
+    --accent: #2f6fed; --accent-text: #ffffff; --ok: #137a3f; --warn: #a15c00; --err: #b42318;
+    --code-bg: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #9aa3b2; --line: #2c3340;
+      --accent: #5b8ff9; --accent-text: #0b1020; --ok: #4cc38a; --warn: #f0b356; --err: #ff6b5e;
+      --code-bg: #141821;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 16px; padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  input, select, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { font: 12.5px/1.45 ui-monospace, Consolas, monospace; min-height: 170px; resize: vertical; }
+  button { padding: 7px 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--accent-text); font: inherit; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .55; cursor: wait; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .stat { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; }
+  .stat b { text-align: right; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tabs button { background: transparent; color: var(--text); border-color: var(--line); }
+  .tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px solid currentColor; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+  pre { margin: 0; padding: 10px; background: var(--code-bg); border-radius: 6px; overflow: auto; max-height: 520px; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+  .summary { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0; font-size: 13px; }
+  .hint { border-left: 3px solid var(--warn); padding: 6px 10px; background: var(--code-bg); border-radius: 4px; font-size: 12.5px; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI API Tester</h1>
+  <p>Calls the backend's <code>/ai/*</code> and <code>/credit-usage</code> routes, which call the AI service and burn credits from <code>total_tokens</code>.</p>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2>1. Connection</h2>
+      <label for="baseUrl">Backend API base URL</label>
+      <input id="baseUrl" value="http://localhost:5000/api/v1">
+      <div class="row"><button class="secondary" id="pingBtn">Check backend</button><span id="pingOut" class="muted"></span></div>
+    </section>
+
+    <section>
+      <h2>2. Login (landlord or tenant)</h2>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <div class="row"><button id="loginBtn">Login</button><button class="secondary" id="logoutBtn">Clear token</button></div>
+      <p id="whoami" class="muted">Not logged in.</p>
+    </section>
+
+    <section>
+      <h2>3. Credits</h2>
+      <div class="stat" id="credits"><span class="muted">Login to see your balance.</span></div>
+      <div class="row"><button class="secondary" id="creditsBtn">Refresh credits</button><button class="secondary" id="historyBtn">My AI runs</button></div>
+      <div class="hint">Every AI call needs at least 1 credit, otherwise it returns <b>402</b>. For testing, set <code>creditBalance</code> on your user in MongoDB (e.g. Compass) to something like 100.</div>
+    </section>
+
+    <section>
+      <h2>4. Property</h2>
+      <label for="analysis">Property analysis (fills <code>propertyAnalysisId</code>)</label>
+      <select id="analysis"><option value="">Load properties first</option></select>
+      <div class="row"><button class="secondary" id="loadAnalysesBtn">Load properties</button></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>5. AI APIs</h2>
+      <div class="tabs" id="tabs"></div>
+      <p class="muted" id="routeInfo"></p>
+      <label for="body">Request body (JSON)</label>
+      <textarea id="body" spellcheck="false"></textarea>
+      <div class="row">
+        <button id="sendBtn">Send</button>
+        <button class="secondary" id="resetBtn">Reset sample</button>
+        <span id="sendStatus" class="muted"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Response</h2>
+      <div class="summary" id="summary"><span class="muted">No request yet.</span></div>
+      <pre id="output"></pre>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { value == null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} },
+};
+
+// Sample bodies; propertyAnalysisId is filled from the property dropdown.
+const MODULES = [
+  { key: 'market', label: 'Market', path: '/ai/market/analyze',
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop' } },
+  { key: 'fit', label: 'Fit score', path: '/ai/fit-score',
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop', project: { parking_spaces: 24 } } },
+  { key: 'concepts', label: 'Concepts', path: '/ai/concepts/generate',
+    body: { propertyAnalysisId: '' } },
+  { key: 'cost', label: 'Cost', path: '/ai/cost/estimate',
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop' } },
+  { key: 'space', label: 'Space plan', path: '/ai/space-plan',
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop' } },
+  { key: 'report', label: 'Report', path: '/ai/report/narrative',
+    body: { propertyAnalysisId: '', report_inputs: { fit_score: { overall_score: 72 }, cost: { low_usd: 120000, high_usd: 180000 } } } },
+  { key: 'match', label: 'Property match', path: '/ai/property-match',
+    body: { requirements: { business_category: 'fitness', locations: ['Travis County'], min_sqft: 2500, max_sqft: 4000, max_rent_psf_year: 33 }, statuses: ['completed'], limit: 5, explain: true } },
+  { key: 'visualize', label: 'Visualize (async)', path: '/ai/visualize', async: true,
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop', images: [{ url: 'https://res.cloudinary.com/YOUR_CLOUD/image/upload/space-photo.jpg', kind: 'space_photo' }] } },
+  { key: 'run', label: 'Full analysis (async)', path: '/ai/analysis/run', async: true,
+    body: { propertyAnalysisId: '', concept_id: 'coffee_shop' } },
+];
+
+let current = MODULES[0];
+let token = store.get('aiTester.token');
+let pollTimer = null;
+
+const base = () => $('baseUrl').value.replace(/\/+$/, '');
+
+async function api(method, path, body) {
+  const headers = { Accept: 'application/json' };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const started = performance.now();
+  let res;
+  try {
+    res = await fetch(base() + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  } catch (err) {
+    const error = new Error(
+      `Network error: ${err.message}. Start the tester with "python test-tools/serve-tester.py" ` +
+      `in the backend folder and open the URL it prints; the base URL above should then be <that URL>/api/v1.`);
+    error.network = true;
+    throw error;
+  }
+  const json = await res.json().catch(() => null);
+  return { status: res.status, ok: res.ok, json, ms: Math.round(performance.now() - started) };
+}
+
+function show(result, title) {
+  const data = result.json?.data ?? null;
+  const parts = [`<span class="badge ${result.ok ? 'ok' : 'err'}">HTTP ${result.status}</span>`, `<span>${result.ms} ms</span>`];
+  if (title) parts.unshift(`<b>${escapeHtml(title)}</b>`);
+  if (data && typeof data === 'object' && 'runId' in data) {
+    const cls = { completed: 'ok', partial: 'warn', failed: 'err' }[data.status] || 'muted';
+    parts.push(`<span>status <span class="badge ${cls}">${escapeHtml(data.status)}</span></span>`);
+    parts.push(`<span>tokens <b>${data.totalTokens ?? 0}</b></span>`);
+    parts.push(`<span>credits charged <b>${data.creditsCharged ?? '—'}</b></span>`);
+    parts.push(`<span class="muted">runId ${escapeHtml(String(data.runId))}</span>`);
+  }
+  if (!result.ok) parts.push(`<span class="err">${escapeHtml(result.json?.message || 'Request failed')}</span>`);
+  $('summary').innerHTML = parts.join('');
+  $('output').textContent = JSON.stringify(result.json, null, 2);
+}
+
+function showError(err) {
+  $('summary').innerHTML = `<span class="err">${escapeHtml(err.message)}</span>`;
+  $('output').textContent = '';
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ─── Connection & auth ──────────────────────────────────
+$('pingBtn').onclick = async () => {
+  $('pingOut').textContent = 'Checking…';
+  try {
+    const r = await api('GET', '/property-analyses?page=1&limit=1');
+    $('pingOut').innerHTML = r.ok ? '<span class="ok">Backend reachable</span>' : `<span class="err">HTTP ${r.status}</span>`;
+  } catch (err) {
+    $('pingOut').innerHTML = `<span class="err">${escapeHtml(err.message)}</span>`;
+  }
+};
+
+$('loginBtn').onclick = async () => {
+  const btn = $('loginBtn');
+  btn.disabled = true;
+  try {
+    const r = await api('POST', '/auth/login', { email: $('email').value.trim(), password: $('password').value });
+    show(r, 'Login');
+    if (r.ok) {
+      token = r.json.data.accessToken;
+      store.set('aiTester.token', token);
+      const u = r.json.data.user;
+      store.set('aiTester.user', `${u.name} · ${u.email} · ${u.role}`);
+      renderWho();
+      loadCredits();
+    }
+  } catch (err) { showError(err); } finally { btn.disabled = false; }
+};
+
+$('logoutBtn').onclick = () => {
+  token = null;
+  store.set('aiTester.token', null);
+  store.set('aiTester.user', null);
+  renderWho();
+  $('credits').innerHTML = '<span class="muted">Login to see your balance.</span>';
+};
+
+function renderWho() {
+  const who = store.get('aiTester.user');
+  $('whoami').innerHTML = token ? `<span class="ok">Logged in</span> — ${escapeHtml(who || 'token set')}` : 'Not logged in.';
+}
+
+// ─── Credits & history ──────────────────────────────────
+async function loadCredits() {
+  if (!token) return;
+  try {
+    const r = await api('GET', '/credit-usage/me?limit=5');
+    if (!r.ok) { $('credits').innerHTML = `<span class="err">${escapeHtml(r.json?.message || `HTTP ${r.status}`)}</span>`; return; }
+    const d = r.json.data;
+    $('credits').innerHTML = `
+      <span>Credit balance</span><b>${d.creditBalance}</b>
+      <span>Tokens per credit</span><b>${d.tokensPerCredit}</b>
+      <span>Charged runs</span><b>${d.totals.runs}</b>
+      <span>Total tokens</span><b>${d.totals.totalTokens}</b>
+      <span>Credits burned</span><b>${d.totals.creditsBurned}</b>
+      <span>Credits deducted</span><b>${d.totals.creditsDeducted}</b>`;
+  } catch (err) { $('credits').innerHTML = `<span class="err">${escapeHtml(err.message)}</span>`; }
+}
+$('creditsBtn').onclick = async () => {
+  try { const r = await api('GET', '/credit-usage/me?limit=20'); show(r, 'Credit usage'); loadCredits(); }
+  catch (err) { showError(err); }
+};
+$('historyBtn').onclick = async () => {
+  try { show(await api('GET', '/ai/runs?limit=20'), 'My AI runs'); } catch (err) { showError(err); }
+};
+
+// ─── Properties ─────────────────────────────────────────
+$('loadAnalysesBtn').onclick = async () => {
+  try {
+    const r = await api('GET', '/property-analyses?page=1&limit=100');
+    if (!r.ok) return show(r, 'Properties');
+    const items = r.json.data || [];
+    const saved = store.get('aiTester.analysis');
+    $('analysis').innerHTML = items.length
+      ? items.map((a) => {
+          const p = a.property || {};
+          const label = `${p.address || 'No address'} — ${p.suite_name || ''} (${a.status}, ${p.square_footage_sf ?? '?'} SF)`;
+          return `<option value="${a._id}" ${a._id === saved ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+        }).join('')
+      : '<option value="">No property analyses found</option>';
+    applyAnalysis();
+    $('summary').innerHTML = `<span class="ok">Loaded ${items.length} properties</span>`;
+  } catch (err) { showError(err); }
+};
+$('analysis').onchange = applyAnalysis;
+
+function applyAnalysis() {
+  store.set('aiTester.analysis', $('analysis').value);
+  try {
+    const body = JSON.parse($('body').value);
+    if ('propertyAnalysisId' in body) {
+      body.propertyAnalysisId = $('analysis').value;
+      $('body').value = JSON.stringify(body, null, 2);
+    }
+  } catch { /* leave hand-edited invalid JSON alone */ }
+}
+
+// ─── AI modules ─────────────────────────────────────────
+function renderTabs() {
+  $('tabs').innerHTML = MODULES.map((m) =>
+    `<button data-key="${m.key}" class="${m.key === current.key ? 'active' : ''}">${escapeHtml(m.label)}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach((b) => {
+    b.onclick = () => { current = MODULES.find((m) => m.key === b.dataset.key); renderTabs(); resetBody(); };
+  });
+  $('routeInfo').innerHTML = `<code>POST ${current.path}</code> ${current.async
+    ? '— async: returns a runId, then this page polls <code>GET /ai/runs/:id</code> until the job finishes.'
+    : '— sync: the result and credits charged come back in this response.'}`;
+}
+
+function resetBody() {
+  const body = structuredClone(current.body);
+  if ('propertyAnalysisId' in body) body.propertyAnalysisId = $('analysis').value;
+  $('body').value = JSON.stringify(body, null, 2);
+}
+$('resetBtn').onclick = resetBody;
+
+$('sendBtn').onclick = async () => {
+  let body;
+  try { body = JSON.parse($('body').value); } catch (err) { return showError(new Error(`Invalid JSON: ${err.message}`)); }
+  if (!token) return showError(new Error('Login first.'));
+  clearInterval(pollTimer);
+  const btn = $('sendBtn');
+  btn.disabled = true;
+  $('sendStatus').textContent = current.async ? 'Submitting…' : 'Waiting for the AI service (can take a minute)…';
+  try {
+    const r = await api('POST', current.path, body);
+    show(r, current.label);
+    if (r.ok && current.async && r.json?.data?.runId) poll(r.json.data.runId);
+    else $('sendStatus').textContent = '';
+    loadCredits();
+  } catch (err) { showError(err); $('sendStatus').textContent = ''; }
+  finally { btn.disabled = false; }
+};
+
+function poll(runId) {
+  let tries = 0;
+  $('sendStatus').textContent = 'Job running — polling every 3 s…';
+  pollTimer = setInterval(async () => {
+    tries += 1;
+    try {
+      const r = await api('GET', `/ai/runs/${runId}`);
+      show(r, `${current.label} — poll #${tries}`);
+      const status = r.json?.data?.status;
+      if (!r.ok || ['completed', 'partial', 'failed'].includes(status) || tries >= 100) {
+        clearInterval(pollTimer);
+        $('sendStatus').textContent = status ? `Job ${status}.` : '';
+        loadCredits();
+      }
+    } catch (err) { clearInterval(pollTimer); showError(err); $('sendStatus').textContent = ''; }
+  }, 3000);
+}
+
+// ─── Init ───────────────────────────────────────────────
+// Served by serve-tester.py: call the same origin, which forwards /api/* to the backend (no CORS).
+if (location.protocol.startsWith('http')) $('baseUrl').value = `${location.origin}/api/v1`;
+store.set('aiTester.baseUrl', null);
+renderWho();
+renderTabs();
+resetBody();
+loadCredits();
+</script>
+</body>
+</html>

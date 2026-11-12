@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Results Preview</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --panel-2: #f0f2f5; --text: #1b2130; --muted: #657085; --line: #dde1e8;
+    --accent: #2f6fed; --accent-soft: #e5edfd; --accent-text: #ffffff;
+    --good: #12805c; --good-soft: #e3f4ec; --mid: #a15c00; --mid-soft: #fbf0df; --bad: #b42318; --bad-soft: #fbe7e5;
+    --z1: #2f6fed; --z2: #12805c; --z3: #a15c00; --z4: #7a4cc2; --z5: #0f7c8c; --z6: #b42363;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141a; --panel: #1a1f28; --panel-2: #222835; --text: #e6e9ef; --muted: #9aa3b2; --line: #2d3442;
+      --accent: #6b9bff; --accent-soft: #23314f; --accent-text: #0b1020;
+      --good: #4cc38a; --good-soft: #17322a; --mid: #f0b356; --mid-soft: #3a2d17; --bad: #ff7b6e; --bad-soft: #3d1f1d;
+      --z1: #6b9bff; --z2: #4cc38a; --z3: #f0b356; --z4: #b393f2; --z5: #4fc7d6; --z6: #f27aae;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px 20px 40px; }
+  @media (max-width: 700px) { .wrap { padding: 12px 16px 32px; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card h3 { margin: 16px 0 8px; font-size: 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: end; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  button { padding: 7px 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--accent-text); font: inherit; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .55; cursor: wait; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--text); }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+  .modules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .modules button { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+  .modules button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 800px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .kpi { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+  .kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 12px; color: var(--muted); }
+  .runbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13px; padding: 10px 12px; background: var(--panel-2); border-radius: 8px; margin-bottom: 12px; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.mid { background: var(--mid-soft); color: var(--mid); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.info { background: var(--accent-soft); color: var(--accent); }
+  .score { display: flex; align-items: center; gap: 14px; }
+  .ring { --p: 0; --c: var(--accent); width: 92px; height: 92px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--panel-2) 0); display: grid; place-items: center; flex: none; }
+  .ring span { width: 70px; height: 70px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; font-size: 22px; font-weight: 700; }
+  .bars { display: grid; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 140px 1fr 44px; gap: 10px; align-items: center; font-size: 13px; }
+  .bar .track { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar b { text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 500px) { .bar { grid-template-columns: 100px 1fr 40px; } }
+  ul.list { margin: 0; padding-left: 18px; }
+  ul.list li { margin: 3px 0; }
+  .cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 800px) { .cols3 { grid-template-columns: 1fr; } }
+  .box { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+  .box h4 { margin: 0 0 6px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .range { position: relative; height: 12px; background: var(--panel-2); border-radius: 6px; margin: 26px 0 8px; }
+  .range .seg-fill { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 6px; }
+  .range .tick { position: absolute; top: -22px; font-size: 12px; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .zones { display: flex; flex-wrap: wrap; gap: 4px; min-height: 160px; }
+  .zone { border-radius: 6px; padding: 8px; color: #fff; min-width: 90px; display: flex; flex-direction: column; justify-content: space-between; min-height: 76px; }
+  .zone b { font-size: 13px; }
+  .zone span { font-size: 12px; opacity: .92; }
+  .match { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .match .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--panel-2); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.bad { background: var(--bad-soft); color: var(--bad); }
+  .tag.unk { color: var(--muted); }
+  .concepts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .concept { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .concept .rank { font-size: 12px; color: var(--muted); }
+  .imgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .imgs figure { margin: 0; }
+  .imgs img { width: 100%; border-radius: 8px; display: block; background: var(--panel-2); aspect-ratio: 4 / 3; object-fit: cover; }
+  .imgs figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .report section { margin-bottom: 14px; }
+  .report h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .report p { margin: 0; }
+  .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .alert.bad { background: var(--bad-soft); color: var(--bad); }
+  .alert.mid { background: var(--mid-soft); color: var(--mid); }
+  .empty { text-align: center; padding: 40px 10px; color: var(--muted); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .pending-zone { background: repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 8px, var(--panel) 8px, var(--panel) 16px); border-radius: 8px; padding: 28px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>AI Results Preview</h1>
+    <div class="sub">How the frontend can present each AI result returned by <code>/api/v1/ai/*</code>.</div>
+  </div>
+  <div class="seg" id="modeSeg">
+    <button data-mode="sample" class="on">Sample data</button>
+    <button data-mode="history">Past runs</button>
+    <button data-mode="live">Live</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card" id="controlsCard">
+    <div id="modeHelp" class="small muted"></div>
+    <div class="controls" id="liveControls" hidden>
+      <div><label for="analysis">Property</label><select id="analysis"><option value="">Loading…</option></select></div>
+      <div><label for="concept">Concept</label>
+        <select id="concept">
+          <option value="coffee_shop">Coffee shop</option>
+          <option value="fast_casual_restaurant">Fast-casual restaurant</option>
+          <option value="quick_service_restaurant">Quick-service restaurant</option>
+          <option value="full_service_restaurant">Full-service restaurant</option>
+        </select>
+      </div>
+      <div><label for="who">Signed in as</label><input id="who" disabled></div>
+    </div>
+    <div class="controls" id="matchControls" hidden style="margin-top:10px">
+      <div><label for="mCategory">Business category</label><input id="mCategory" value="fitness"></div>
+      <div><label for="mLocation">Location</label><input id="mLocation" value="Travis County"></div>
+      <div><label for="mMin">Min SF</label><input id="mMin" type="number" value="2500"></div>
+      <div><label for="mMax">Max SF</label><input id="mMax" type="number" value="4000"></div>
+      <div><label for="mRent">Max rent $/SF/yr</label><input id="mRent" type="number" value="33"></div>
+    </div>
+    <div class="controls" id="historyControls" hidden>
+      <div><label for="runSelect">Past run</label><select id="runSelect"><option value="">Loading…</option></select></div>
+      <div><button class="ghost" id="reloadRuns">Reload runs</button></div>
+    </div>
+    <div class="modules" id="modules"></div>
+    <div style="margin-top:12px" id="actionRow"><button id="runBtn">Show result</button> <span id="runNote" class="small muted"></span></div>
+  </div>
+
+  <div id="result"><div class="card empty">Pick a module above to preview its result screen.</div></div>
+</div>
+
+<script>
+// ─── Helpers ───────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (v) => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+const num = (v, d = 0) => v == null ? '—' : new Intl.NumberFormat('en-US', { maximumFractionDigits: d }).format(v);
+const title = (s) => String(s ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+const tone = (score) => score >= 70 ? 'good' : score >= 40 ? 'mid' : 'bad';
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } } };
+const token = () => store.get('aiTester.token');
+const API = `${location.protocol.startsWith('http') ? location.origin : 'http://localhost:3000'}/api/v1`;
+
+async function api(method, path, body) {
+  const headers = { Accept: 'application/json' };
+  if (body) headers['Content-Type'] = 'application/json';
+  if (token()) headers.Authorization = `Bearer ${token()}`;
+  const res = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+  return json;
+}
+
+// ─── Module catalogue ──────────────────────────────────────
+const MODULES = [
+  { key: 'market', label: 'Market', path: '/ai/market/analyze' },
+  { key: 'fit_score', label: 'Fit score', path: '/ai/fit-score' },
+  { key: 'concepts', label: 'Concepts', path: '/ai/concepts/generate' },
+  { key: 'cost', label: 'Cost', path: '/ai/cost/estimate' },
+  { key: 'space_plan', label: 'Space plan', path: '/ai/space-plan' },
+  { key: 'report', label: 'Report', path: '/ai/report/narrative' },
+  { key: 'property_match', label: 'Property match', path: '/ai/property-match' },
+  { key: 'visualize', label: 'Visualization', path: '/ai/visualize', async: true },
+  { key: 'analysis_run', label: 'Full analysis', path: '/ai/analysis/run', async: true },
+];
+
+// ─── Sample backend responses (data of GET /ai/runs/:id) ───
+const FIT = {
+  concept_id: 'coffee_shop', overall_score: 74.5,
+  subscores: { demographic_match: 82, competition: 58, physical_fit: 90, financial_fit: 66, access_visibility: 75 },
+  normalized_weights: { demographic_match: 0.25, competition: 0.2, physical_fit: 0.2, financial_fit: 0.2, access_visibility: 0.15 },
+  strengths: ['Median household income of $86,400 sits inside the target band.', 'Ceiling height and electrical service meet coffee-shop requirements.'],
+  weaknesses: ['7 competing cafés within 1 mile.'],
+  risks: ['Occupancy cost ratio is above the 10% benchmark at the asking rent.'],
+  reasons: ['Strong physical fit and demographics outweigh moderate competition.'],
+};
+const MARKET = {
+  formatted_address: '1015 S Congress Ave, Austin, TX 78704, USA', location: { lat: 30.2531, lng: -97.7487 },
+  demographics: { acs_year: 2024, tract: { total_population: 5320, median_household_income: 86400, median_age: 33.1, households: 2710 }, county: { total_population: 1326436, median_household_income: 92731, median_age: 34.6, households: 541202 } },
+  competitor_counts_by_radius: { '0.5': 3, '1.0': 7, '3.0': 31 },
+  competitors: [
+    { place_id: 'p1', name: 'Jo’s Coffee', primary_type: 'coffee_shop', location: { lat: 30.2512, lng: -97.7490 } },
+    { place_id: 'p2', name: 'Mañana Coffee', primary_type: 'cafe', location: { lat: 30.2560, lng: -97.7470 } },
+    { place_id: 'p3', name: 'Seven Grand Café', primary_type: 'cafe', location: { lat: 30.2490, lng: -97.7502 } },
+  ],
+  routes: [{ destination_index: 0, duration_seconds: 120, distance_meters: 400 }, { destination_index: 1, duration_seconds: 240, distance_meters: 900 }, { destination_index: 2, duration_seconds: 300, distance_meters: 1300 }],
+  summary: 'The tract around 1015 S Congress Ave has 5,320 residents with a median household income of $86,400. Café competition is moderate: 3 within half a mile and 7 within one mile.',
+};
+const CONCEPTS = [
+  { concept_id: 'coffee_shop', name: 'Coffee Shop', score: 74.5, fit: FIT, rationale: 'The 3,430 SF warm shell fits a café with seating, and local income supports premium pricing.' },
+  { concept_id: 'fast_casual_restaurant', name: 'Fast-Casual Restaurant', score: 68.2, fit: { ...FIT, overall_score: 68.2 }, rationale: 'Good foot traffic, but a hood and grease trap would need to be added.' },
+  { concept_id: 'boutique_fitness', name: 'Boutique Fitness', score: 61.0, fit: { ...FIT, overall_score: 61 }, rationale: 'Fitness is a landlord-preferred category; ceiling height suits a studio.' },
+];
+const COST = { concept_id: 'coffee_shop', low_usd: 185000, high_usd: 262000, base_low_usd: 210000, base_high_usd: 287000, credits_usd: 25000, condition_multiplier: 0.85, drivers: ['Warm-shell delivery reduces base build-out by 15%.', 'Landlord work contribution of $25,000 is credited against the range.', 'HVAC capacity increase is the largest single line item.'] };
+const SPACE = { concept_id: 'coffee_shop', template_id: 'cafe', total_sqft: 3430, floor_plan_confidence: 'not_requested',
+  zones: [{ id: 'seating', label: 'Customer seating', sqft: 1543.5, ratio: 0.45 }, { id: 'bar', label: 'Service bar', sqft: 514.5, ratio: 0.15 }, { id: 'kitchen', label: 'Back of house', sqft: 686, ratio: 0.2 }, { id: 'restrooms', label: 'Restrooms', sqft: 343, ratio: 0.1 }, { id: 'storage', label: 'Storage', sqft: 205.8, ratio: 0.06 }, { id: 'office', label: 'Office', sqft: 137.2, ratio: 0.04 }],
+  workflow_notes: ['Place the service bar near the entrance so queues form inside.', 'Keep back-of-house adjacent to the bar for restocking.'], floor_plan_notes: [] };
+const REPORT = {
+  executive_summary: '1015 S Congress Ave is a strong candidate for a coffee shop, scoring 74.5 out of 100.',
+  market: 'The trade area has 5,320 residents with a median household income of $86,400 and 7 competing cafés within one mile.',
+  fit: 'Physical fit (90) and demographics (82) are the strongest factors; competition (58) is the weakest.',
+  cost: 'Estimated build-out is $185,000 to $262,000 after a $25,000 landlord contribution.',
+  space_plan: 'Customer seating takes 45% of the 3,430 SF, with a service bar near the entrance.',
+  risks: 'Occupancy cost is above the benchmark at the asking rent; negotiate rent or tenant improvement allowance.',
+};
+const MATCH = {
+  requirements: { business_category: 'fitness', locations: ['Travis County'], min_sqft: 2500, max_sqft: 4000, max_rent_psf_year: 33 },
+  matches: [{ analysis_id: '6adae5831332136ef3506aac', status: 'completed', tier: 'match', score: 94.7, subscores: { category: 100, size: 100, budget: 100, location: 100, systems: 10 },
+    strengths: ["'fitness' is a landlord-preferred category.", '3430 SF is within the requested size range.', 'Asking rent $30/SF/yr is within the $33 budget.', 'Located in a requested area (travis_county).'],
+    gaps: ['6 open building-system work item(s).'], unknowns: [],
+    summary: { address: '1015 S Congress Ave', suite_name: 'South Congress Retail Gallery', state_county: 'Texas / Travis County', property_type: 'vacant_space', square_footage_sf: 3430, current_condition: 'warm_shell', asking_rent_psf_year: 30, lease_type: 'nnn', preferred_categories: ['restaurants', 'fitness', 'medical_wellness'] },
+    rationale: 'Meets every key requirement — size, budget, location and a landlord-preferred category. The main caveat is six open building-system items.' }],
+  similar: [{ analysis_id: '6ac0848fce06f996227bbb5a', status: 'completed', tier: 'similar', score: 74.9, subscores: { category: 50, size: 100, budget: 78.5, location: 100 },
+    strengths: ['3430 SF is within the requested size range.', 'Located in a requested area (travis_county).'],
+    gaps: ['Asking rent $32/SF/yr exceeds the $31 budget.'], unknowns: ['Landlord lists no preferred tenant categories.', 'Rent unit not reported; assumed $/SF/year.'],
+    summary: { address: '1015 S Congress Ave', suite_name: 'South Congress Retail Gallery', state_county: 'Texas / Travis County', property_type: 'vacant_space', square_footage_sf: 3430, current_condition: 'warm_shell', asking_rent_psf_year: 32, lease_type: null, preferred_categories: [] },
+    rationale: 'Similar space, slightly over budget; the landlord has not stated category preferences.' }],
+  evaluated_count: 2, excluded_count: 0, skipped_invalid_count: 0, truncated: false,
+};
+const VIS = { label: 'AI concept visualization', architecture_description: 'Warm-toned café with a long walnut service bar along the north wall, pendant lighting and banquette seating under the storefront windows.', image_urls: [] };
+
+const SAMPLE_RESULTS = {
+  market: MARKET, fit_score: FIT, concepts: CONCEPTS, cost: COST, space_plan: SPACE, report: REPORT, property_match: MATCH, visualize: VIS,
+  analysis_run: { market: MARKET, concepts: CONCEPTS, fit_score: FIT, cost: COST, space_plan: SPACE, report: REPORT },
+};
+const sampleRun = (key) => ({
+  runId: 'sample-' + key, module: key, status: key === 'visualize' ? 'partial' : 'completed',
+  totalTokens: { market: 2140, fit_score: 1860, concepts: 2420, cost: 1310, space_plan: 1540, report: 3980, property_match: 2890, visualize: 4200, analysis_run: 11840 }[key],
+  creditsCharged: null, results: SAMPLE_RESULTS[key],
+  errors: key === 'visualize' ? [{ module: 'visualize', code: 'sample', message: 'Sample mode has no rendered images; live runs return image_urls from Cloudinary.' }] : [],
+  createdAt: new Date().toISOString(),
+});
+
+// ─── Renderers: one per module, all take the run's `results` ─
+function ring(score) {
+  return `<div class="ring" style="--p:${Math.max(0, Math.min(100, score))};--c:var(--${tone(score) === 'good' ? 'good' : tone(score) === 'mid' ? 'mid' : 'bad'})"><span>${num(score, 0)}</span></div>`;
+}
+function bars(obj, max = 100) {
+  return `<div class="bars">${Object.entries(obj || {}).map(([k, v]) => `
+    <div class="bar"><span>${esc(title(k))}</span><div class="track"><div class="fill" style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%;background:var(--${tone(v)})"></div></div><b>${num(v, 0)}</b></div>`).join('')}</div>`;
+}
+const list = (items, empty = 'None') => items?.length ? `<ul class="list">${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : `<span class="muted small">${empty}</span>`;
+
+const RENDER = {
+  market(r) {
+    const t = r.demographics?.tract || {}, c = r.demographics?.county || {};
+    const radii = Object.entries(r.competitor_counts_by_radius || {});
+    return `
+      <p class="muted" style="margin-top:0">${esc(r.formatted_address)}</p>
+      ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
+      <div class="grid3">
+        <div class="kpi"><div class="v">${num(t.total_population)}</div><div class="l">Tract population</div></div>
+        <div class="kpi"><div class="v">${money(t.median_household_income)}</div><div class="l">Median household income (county ${money(c.median_household_income)})</div></div>
+        <div class="kpi"><div class="v">${num(t.median_age, 1)}</div><div class="l">Median age (county ${num(c.median_age, 1)})</div></div>
+      </div>
+      <h3>Competition by radius</h3>
+      <div class="grid3">${radii.map(([mi, n]) => `<div class="kpi"><div class="v">${num(n)}</div><div class="l">within ${esc(mi)} mi</div></div>`).join('') || '<span class="muted small">No competitor data.</span>'}</div>
+      <h3>Nearest competitors</h3>
+      ${r.competitors?.length ? `<table><thead><tr><th>Name</th><th>Type</th><th class="n">Drive</th><th class="n">Distance</th></tr></thead><tbody>
+        ${r.competitors.map((p, i) => { const route = (r.routes || []).find((x) => x.destination_index === i); return `<tr><td>${esc(p.name || p.place_id)}</td><td>${esc(title(p.primary_type))}</td><td class="n">${route?.duration_seconds != null ? num(route.duration_seconds / 60, 0) + ' min' : '—'}</td><td class="n">${route?.distance_meters != null ? num(route.distance_meters / 1609.34, 1) + ' mi' : '—'}</td></tr>`; }).join('')}
+      </tbody></table>` : '<span class="muted small">No competitors found.</span>'}
+      <p class="small muted">Competitor names come from Google Places and may be displayed but not stored.</p>`;
+  },
+  fit_score(r) {
+    return `
+      <div class="score">${ring(r.overall_score)}<div><div style="font-size:16px;font-weight:650">${esc(title(r.concept_id))}</div><div class="muted small">Overall fit score out of 100 (${esc(r.formula_version || 'fit-score.v1')})</div></div></div>
+      <h3>Score breakdown</h3>${bars(r.subscores)}
+      <div class="cols3" style="margin-top:14px">
+        <div class="box"><h4 style="color:var(--good)">Strengths</h4>${list(r.strengths)}</div>
+        <div class="box"><h4 style="color:var(--mid)">Weaknesses</h4>${list(r.weaknesses)}</div>
+        <div class="box"><h4 style="color:var(--bad)">Risks</h4>${list(r.risks)}</div>
+      </div>
+      ${r.reasons?.length ? `<h3>Why</h3>${list(r.reasons)}` : ''}`;
+  },
+  concepts(r) {
+    const items = Array.isArray(r) ? r : [];
+    if (!items.length) return '<div class="empty">No concept passes the hard requirements for this space.</div>';
+    return `<div class="concepts">${items.map((c, i) => `
+      <div class="concept">
+        <div class="rank">#${i + 1} recommendation</div>
+        <div class="score" style="margin:6px 0">${ring(c.score)}<div><b style="font-size:15px">${esc(c.name)}</b><div class="small muted">${esc(c.concept_id)}</div></div></div>
+        ${c.rationale ? `<p class="small" style="margin:6px 0 0">${esc(c.rationale)}</p>` : ''}
+      </div>`).join('')}</div>`;
+  },
+  cost(r) {
+    const max = Math.max(r.base_high_usd || 0, r.high_usd || 0) * 1.05 || 1;
+    const pos = (v) => `${(v / max) * 100}%`;
+    return `
+      <div class="grid3">
+        <div class="kpi"><div class="v">${money(r.low_usd)}</div><div class="l">Low estimate</div></div>
+        <div class="kpi"><div class="v">${money(r.high_usd)}</div><div class="l">High estimate</div></div>
+        <div class="kpi"><div class="v">${money(r.credits_usd)}</div><div class="l">Landlord credits applied</div></div>
+      </div>
+      <div class="range">
+        <div class="seg-fill" style="left:${pos(r.low_usd)};width:calc(${pos(r.high_usd)} - ${pos(r.low_usd)})"></div>
+        <div class="tick" style="left:${pos(r.low_usd)}">${money(r.low_usd)}</div>
+        <div class="tick" style="left:${pos(r.high_usd)}">${money(r.high_usd)}</div>
+      </div>
+      <p class="small muted">Before credits: ${money(r.base_low_usd)} – ${money(r.base_high_usd)} · condition multiplier × ${num(r.condition_multiplier, 2)}</p>
+      <h3>Cost drivers</h3>${list(r.drivers)}`;
+  },
+  space_plan(r) {
+    const colors = ['--z1', '--z2', '--z3', '--z4', '--z5', '--z6'];
+    return `
+      <p class="muted" style="margin-top:0">${num(r.total_sqft)} SF · template ${esc(r.template_id)}</p>
+      <div class="zones">${(r.zones || []).map((z, i) => `
+        <div class="zone" style="flex:${z.ratio * 100} 1 0;background:var(${colors[i % colors.length]})"><b>${esc(z.label)}</b><span>${num(z.sqft)} SF · ${num(z.ratio * 100)}%</span></div>`).join('')}</div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="box"><h4>Workflow notes</h4>${list(r.workflow_notes)}</div>
+        <div class="box"><h4>Floor-plan notes ${r.floor_plan_confidence === 'low' ? '<span class="pill mid">low confidence</span>' : ''}</h4>${list(r.floor_plan_notes, 'No floor plan was supplied.')}</div>
+      </div>`;
+  },
+  report(r) {
+    const sections = ['executive_summary', 'market', 'fit', 'cost', 'space_plan', 'risks'];
+    return `<div class="report">${sections.filter((s) => r[s]).map((s) => `<section><h4>${esc(title(s))}</h4><p>${esc(r[s])}</p></section>`).join('')}</div>`;
+  },
+  property_match(r) {
+    const card = (m) => {
+      const s = m.summary || {};
+      return `<div class="match">
+        <div class="top">
+          <div><b>${esc(s.address || m.analysis_id)}</b> <span class="muted">${esc(s.suite_name || '')}</span>
+            <div class="small muted">${esc(s.state_county || '')} · ${num(s.square_footage_sf)} SF · ${s.asking_rent_psf_year != null ? money(s.asking_rent_psf_year) + '/SF/yr' : 'rent n/a'} · ${esc(title(s.current_condition || ''))}</div></div>
+          <div style="text-align:right"><span class="pill ${tone(m.score)}">${num(m.score, 1)}</span><div class="small muted">${esc(m.tier)}</div></div>
+        </div>
+        ${m.rationale ? `<p class="small" style="margin:8px 0 0">${esc(m.rationale)}</p>` : ''}
+        <div class="tags">
+          ${(m.strengths || []).map((x) => `<span class="tag good">✓ ${esc(x)}</span>`).join('')}
+          ${(m.gaps || []).map((x) => `<span class="tag bad">✕ ${esc(x)}</span>`).join('')}
+          ${(m.unknowns || []).map((x) => `<span class="tag unk">? ${esc(x)}</span>`).join('')}
+        </div>
+      </div>`;
+    };
+    return `
+      <div class="grid3" style="margin-bottom:12px">
+        <div class="kpi"><div class="v">${num(r.matches?.length)}</div><div class="l">Matches</div></div>
+        <div class="kpi"><div class="v">${num(r.similar?.length)}</div><div class="l">Similar</div></div>
+        <div class="kpi"><div class="v">${num(r.evaluated_count)}</div><div class="l">Listings evaluated</div></div>
+      </div>
+      ${r.truncated ? '<div class="alert mid">Only the first pages of listings were evaluated.</div>' : ''}
+      <h3>Matches</h3>${r.matches?.length ? r.matches.map(card).join('') : '<p class="muted small">No listing meets every key requirement.</p>'}
+      <h3>Similar properties</h3>${r.similar?.length ? r.similar.map(card).join('') : '<p class="muted small">No near matches.</p>'}`;
+  },
+  visualize(r) {
+    const urls = r.image_urls || [];
+    const b64 = (r.images_base64 || []).map((d) => `data:image/png;base64,${d}`);
+    const all = [...urls, ...b64];
+    return `
+      <p><span class="pill info">${esc(r.label || 'AI concept visualization')}</span></p>
+      ${all.length ? `<div class="imgs">${all.map((src, i) => `<figure><img src="${esc(src)}" alt="Concept visualization ${i + 1}" loading="lazy"><figcaption>Variation ${i + 1}</figcaption></figure>`).join('')}</div>`
+        : '<div class="pending-zone muted">Rendered images appear here (results.image_urls).</div>'}
+      ${r.architecture_description ? `<h3>Design description</h3><p>${esc(r.architecture_description)}</p>` : ''}`;
+  },
+  analysis_run(r) {
+    const part = (key, label) => r[key] == null ? '' : `<div class="card"><h2>${label}</h2>${RENDER[key](r[key])}</div>`;
+    return `<p class="muted" style="margin-top:0">Every module from one run, in report order.</p>` +
+      part('report', 'Report') + part('fit_score', 'Fit score') + part('concepts', 'Concept recommendations') +
+      part('market', 'Market') + part('cost', 'Build-out cost') + part('space_plan', 'Space plan');
+  },
+};
+
+// ─── Run shell: status, tokens, credits, errors around the module view ─
+function renderRun(run, note = '') {
+  const mod = MODULES.find((m) => m.key === run.module) || { label: title(run.module) };
+  const statusTone = { completed: 'good', partial: 'mid', failed: 'bad', running: 'info', pending: 'info' }[run.status] || 'info';
+  const head = `
+    <div class="runbar">
+      <b>${esc(mod.label)}</b>
+      <span class="pill ${statusTone}">${esc(run.status)}</span>
+      <span>Tokens <b>${num(run.totalTokens)}</b></span>
+      <span>Credits charged <b>${run.creditsCharged == null ? '—' : num(run.creditsCharged)}</b></span>
+      <span class="muted small">${run.createdAt ? new Date(run.createdAt).toLocaleString() : ''}</span>
+      ${note ? `<span class="muted small">${esc(note)}</span>` : ''}
+    </div>`;
+  const errors = (run.errors || []).length
+    ? `<div class="alert ${run.status === 'failed' ? 'bad' : 'mid'}">${run.status === 'failed' ? 'This run failed.' : 'Some parts are missing.'}<ul class="list">${run.errors.map((e) => `<li>${esc(e.module)}: ${esc(e.message)}</li>`).join('')}</ul></div>` : '';
+  let body;
+  if (run.status === 'running' || run.status === 'pending') body = `<div class="pending-zone"><span class="spinner"></span> Working on it — this usually takes under a minute.</div>`;
+  else if (run.results == null) body = '<div class="empty">No result to show.</div>';
+  else body = (RENDER[run.module] || ((r) => `<pre>${esc(JSON.stringify(r, null, 2))}</pre>`))(run.results);
+  $('result').innerHTML = `<div class="card">${head}${errors}${body}</div>`;
+}
+
+// ─── Modes ─────────────────────────────────────────────────
+let mode = 'sample';
+let current = MODULES[0];
+let pollTimer = null;
+
+function renderModules() {
+  $('modules').innerHTML = MODULES.map((m) => `<button data-key="${m.key}" class="${m.key === current.key ? 'on' : ''}">${esc(m.label)}</button>`).join('');
+  $('modules').querySelectorAll('button').forEach((b) => b.onclick = () => {
+    current = MODULES.find((m) => m.key === b.dataset.key);
+    renderModules();
+    $('matchControls').hidden = !(mode === 'live' && current.key === 'property_match');
+    if (mode === 'sample') renderRun(sampleRun(current.key), 'Sample data — no credits used');
+  });
+}
+
+async function setMode(next) {
+  mode = next;
+  clearInterval(pollTimer);
+  document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+  $('liveControls').hidden = mode !== 'live';
+  $('historyControls').hidden = mode !== 'history';
+  $('matchControls').hidden = !(mode === 'live' && current.key === 'property_match');
+  $('modules').hidden = mode === 'history';
+  $('runBtn').textContent = mode === 'live' ? 'Run (uses credits)' : 'Show result';
+  $('runNote').textContent = '';
+  $('modeHelp').innerHTML = {
+    sample: 'Built-in example results for every module. Nothing is sent to the backend and no credits are used.',
+    history: 'Re-open a run you already paid for (<code>GET /ai/runs</code> → <code>GET /ai/runs/:id</code>). No credits are used. Log in on the <a href="ai-tester.html">tester page</a> first.',
+    live: 'Calls the real backend and AI service and <b>burns credits</b>. Log in on the <a href="ai-tester.html">tester page</a> first; this page reuses that login.',
+  }[mode];
+  if (mode === 'sample') renderRun(sampleRun(current.key), 'Sample data — no credits used');
+  if (mode === 'live') await prepareLive();
+  if (mode === 'history') await loadRuns();
+}
+
+async function prepareLive() {
+  $('who').value = token() ? 'Logged in (from tester page)' : 'Not logged in — use the tester page';
+  try {
+    const r = await api('GET', '/property-analyses?page=1&limit=100');
+    $('analysis').innerHTML = (r.data || []).map((a) => `<option value="${a._id}">${esc(a.property?.address || 'No address')} — ${esc(a.property?.suite_name || '')} (${esc(a.status)})</option>`).join('') || '<option value="">No properties</option>';
+  } catch (err) { $('analysis').innerHTML = `<option value="">${esc(err.message)}</option>`; }
+}
+
+async function loadRuns() {
+  if (!token()) { $('runSelect').innerHTML = '<option value="">Log in on the tester page first</option>'; return; }
+  try {
+    const r = await api('GET', '/ai/runs?limit=50');
+    const runs = r.data?.runs || [];
+    $('runSelect').innerHTML = runs.map((x) => `<option value="${x._id}">${esc(title(x.module))} · ${esc(x.status)} · ${new Date(x.createdAt).toLocaleString()} · ${num(x.totalTokens)} tokens</option>`).join('') || '<option value="">No runs yet</option>';
+  } catch (err) { $('runSelect').innerHTML = `<option value="">${esc(err.message)}</option>`; }
+}
+$('reloadRuns').onclick = loadRuns;
+
+function liveBody(key) {
+  if (key === 'property_match') {
+    const n = (id) => $(id).value === '' ? undefined : Number($(id).value);
+    return { requirements: { business_category: $('mCategory').value || undefined, locations: $('mLocation').value ? [$('mLocation').value] : [], min_sqft: n('mMin'), max_sqft: n('mMax'), max_rent_psf_year: n('mRent') }, limit: 10, explain: true };
+  }
+  const body = { propertyAnalysisId: $('analysis').value };
+  if (['market', 'fit_score', 'cost', 'space_plan', 'visualize', 'analysis_run'].includes(key)) body.concept_id = $('concept').value;
+  if (key === 'report') body.report_inputs = { note: 'Generate from the stored property facts.' };
+  if (key === 'visualize') body.images = [{ url: prompt('Public https image URL of the space (e.g. a Cloudinary photo):') || '', kind: 'space_photo' }];
+  return body;
+}
+
+function poll(runId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await api('GET', `/ai/runs/${runId}`);
+      renderRun(r.data);
+      if (['completed', 'partial', 'failed'].includes(r.data.status)) clearInterval(pollTimer);
+    } catch (err) { clearInterval(pollTimer); showError(err); }
+  }, 3000);
+}
+
+function showError(err) {
+  $('result').innerHTML = `<div class="card"><div class="alert bad">${esc(err.message)}</div></div>`;
+}
+
+$('runBtn').onclick = async () => {
+  if (mode === 'sample') return renderRun(sampleRun(current.key), 'Sample data — no credits used');
+  if (!token()) return showError(new Error('Log in on the tester page (ai-tester.html) first.'));
+  const btn = $('runBtn');
+  btn.disabled = true;
+  try {
+    if (mode === 'history') {
+      if (!$('runSelect').value) throw new Error('Pick a run first.');
+      renderRun((await api('GET', `/ai/runs/${$('runSelect').value}`)).data);
+    } else {
+      $('result').innerHTML = `<div class="card"><div class="pending-zone"><span class="spinner"></span> Running ${esc(current.label)}…</div></div>`;
+      const r = await api('POST', current.path, liveBody(current.key));
+      renderRun(r.data);
+      if (current.async) poll(r.data.runId);
+    }
+  } catch (err) { showError(err); } finally { btn.disabled = false; }
+};
+
+document.querySelectorAll('#modeSeg button').forEach((b) => b.onclick = () => setMode(b.dataset.mode));
+renderModules();
+setMode('sample');
+</script>
+</body>
+</html>
