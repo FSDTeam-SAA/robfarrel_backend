@@ -1,0 +1,704 @@
+{
+  "info": {
+    "name": "Robfarrel Backend – AI & Credit Burn APIs",
+    "description": "Only the APIs added for the AI integration: `/ai/*` and `/credit-usage`.\n\n**Setup**\n1. Set `baseUrl` (default `http://localhost:5000/api/v1`).\n2. Log in with the existing `POST /auth/login` and paste `data.accessToken` into the `token` variable (landlord or tenant). Paste an admin token into `adminToken` for **Credit usage (admin)**.\n3. Set `propertyAnalysisId` to a property analysis id (`GET /property-analyses`).\n\n**Credits**: each run needs a balance of at least `AI_MIN_CREDITS_TO_RUN` (else **402**). Credits burned = ceil(`total_tokens` / `AI_TOKENS_PER_CREDIT`), charged once when the run finishes `completed` or `partial`; failed runs are free.\n\nEvery AI request saves `data.runId` into the `runId` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "propertyAnalysisId",
+      "value": "6af57c6043e27b1087eb9e35"
+    },
+    {
+      "key": "conceptId",
+      "value": "coffee_shop"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "callbackSecret",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "AI analysis (sync)",
+      "description": "Landlord or tenant token. Send `propertyAnalysisId` (mapped to the AI project) and/or `project` (raw AI project fields that override the mapped ones).",
+      "item": [
+        {
+          "name": "Market analysis",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/market/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "market",
+                "analyze"
+              ]
+            },
+            "description": "Demographics, competitors by radius, drive times and an AI market summary.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Fit score",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\",\n  \"project\": {\n    \"parking_spaces\": 24\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/fit-score",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "fit-score"
+              ]
+            },
+            "description": "Deterministic 0–100 fit score with subscores plus AI strengths, weaknesses and risks. Optional `market_snapshot` (a previous market result) improves the score.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Generate concepts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/concepts/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "concepts",
+                "generate"
+              ]
+            },
+            "description": "Top 3 business concepts that pass the space's hard requirements, with AI rationales. Optional `market_snapshot`.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Cost estimate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/cost/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "cost",
+                "estimate"
+              ]
+            },
+            "description": "Low/high build-out cost after landlord credits, with AI cost drivers.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Space plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\",\n  \"images\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/space-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "space-plan"
+              ]
+            },
+            "description": "Zone allocation (treemap-ready) and workflow notes. Optional `images`: `[{ \"url\": \"https://...\", \"kind\": \"floor_plan\" }]` for low-confidence floor-plan notes.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Report narrative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"report_inputs\": {\n    \"fit_score\": {\n      \"overall_score\": 72\n    },\n    \"cost\": {\n      \"low_usd\": 120000,\n      \"high_usd\": 180000\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/report/narrative",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "report",
+                "narrative"
+              ]
+            },
+            "description": "Report sections (executive summary, market, fit, cost, space plan, risks) written only from `report_inputs`.\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        },
+        {
+          "name": "Property match",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requirements\": {\n    \"business_category\": \"fitness\",\n    \"locations\": [\n      \"Travis County\"\n    ],\n    \"min_sqft\": 2500,\n    \"max_sqft\": 4000,\n    \"max_rent_psf_year\": 33\n  },\n  \"statuses\": [\n    \"completed\"\n  ],\n  \"limit\": 10,\n  \"explain\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/property-match",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "property-match"
+              ]
+            },
+            "description": "Listings that fit the requirements (`matches`) and near misses (`similar`). Use `reference_analysis_id` instead of / with `requirements` to find listings similar to one property. `explain: false` skips the AI rationale (0 tokens, 0 credits).\n\nSync: the response `data` contains `status`, `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI analysis (async)",
+      "item": [
+        {
+          "name": "Visualize",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\",\n  \"images\": [\n    {\n      \"url\": \"https://res.cloudinary.com/YOUR_CLOUD/image/upload/space-photo.jpg\",\n      \"kind\": \"space_photo\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/visualize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "visualize"
+              ]
+            },
+            "description": "AI concept images of the space. `images[].url` must be a public https photo (Cloudinary). Rendered images are stored on Cloudinary and returned as `results.image_urls`.\n\nAsync: returns **202** with `data.runId` and `status: running`. Poll **Get AI run** until `status` is `completed`, `partial` or `failed`; credits are charged when the AI callback arrives."
+          }
+        },
+        {
+          "name": "Full analysis",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.runId) {",
+                  "  pm.collectionVariables.set('runId', body.data.runId);",
+                  "  console.log('runId =', body.data.runId, '| status =', body.data.status, '| tokens =', body.data.totalTokens, '| credits charged =', body.data.creditsCharged);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyAnalysisId\": \"{{propertyAnalysisId}}\",\n  \"concept_id\": \"{{conceptId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/analysis/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "analysis",
+                "run"
+              ]
+            },
+            "description": "Market → concepts → fit score → cost → space plan → report in one job. Omit `concept_id` to use the top recommended concept.\n\nAsync: returns **202** with `data.runId` and `status: running`. Poll **Get AI run** until `status` is `completed`, `partial` or `failed`; credits are charged when the AI callback arrives."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI runs",
+      "item": [
+        {
+          "name": "List my AI runs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ai/runs?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "runs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "module",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Your run history, newest first (without results). Filter by `module` (market, fit_score, concepts, cost, space_plan, report, property_match, visualize, analysis_run) or `status`."
+          }
+        },
+        {
+          "name": "Get AI run",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ai/runs/{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "runs",
+                "{{runId}}"
+              ]
+            },
+            "description": "One run with `results`, `errors`, `usage`, `totalTokens` and `creditsCharged`. Owner or admin. Poll this for async runs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Credit usage",
+      "item": [
+        {
+          "name": "My credit usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/credit-usage/me?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-usage",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "module",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Landlord or tenant. Current `creditBalance`, `tokensPerCredit`, totals (runs, totalTokens, creditsBurned, creditsDeducted) and per-run credit burn history."
+          }
+        },
+        {
+          "name": "Credit usage (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/credit-usage?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-usage"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "userId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "module",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. Every user's credit burn with totals; filter by `userId`, `module` or `date` (YYYY-MM-DD).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI service callback (internal)",
+      "description": "Called by the AI service, not the frontend. Only for testing signature handling.",
+      "item": [
+        {
+          "name": "AI job callback (signed)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Signs the body like the AI service: X-Signature = sha256=<HMAC-SHA256(secret, \"{timestamp}.{body}\")>",
+                  "const secret = pm.collectionVariables.get('callbackSecret');",
+                  "if (!secret) { throw new Error('Set the callbackSecret variable to AI_CALLBACK_SIGNING_SECRET'); }",
+                  "const body = pm.variables.replaceIn(pm.request.body.raw);",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const signature = 'sha256=' + CryptoJS.HmacSHA256(timestamp + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-Signature-Timestamp', value: timestamp });",
+                  "pm.request.headers.upsert({ key: 'X-Signature', value: signature });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_id\": \"{{runId}}\",\n  \"job_id\": \"manual-test\",\n  \"status\": \"completed\",\n  \"results\": {\n    \"note\": \"manual callback test\"\n  },\n  \"errors\": [],\n  \"usage\": [\n    {\n      \"provider\": \"anthropic\",\n      \"operation\": \"manual\",\n      \"input_tokens\": 1200,\n      \"output_tokens\": 300\n    }\n  ],\n  \"total_tokens\": 1500,\n  \"config_version\": \"manual\",\n  \"prompt_version\": \"manual\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/callback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "callback"
+              ]
+            },
+            "description": "Public route authenticated by HMAC, not JWT. Set `callbackSecret` to the backend's `AI_CALLBACK_SIGNING_SECRET` and `runId` to a **running** async run. Completes that run and burns ceil(1500 / AI_TOKENS_PER_CREDIT) credits. A wrong or stale signature returns 401; a repeated callback is acknowledged without charging again."
+          }
+        }
+      ]
+    }
+  ]
+}
