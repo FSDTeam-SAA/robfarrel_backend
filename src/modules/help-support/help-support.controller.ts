@@ -76,6 +76,14 @@ export class HelpSupportController {
     return this.helpSupportService.getAllTickets(query);
   }
 
+  // ─── Admin: Summary cards ───────────────────────────────
+  @Get('admin/cards')
+  @UseGuards(RolesGuard)
+  @Roles(RoleType.ADMIN)
+  getAdminCards() {
+    return this.helpSupportService.getAdminCards();
+  }
+
   // ─── Admin only: Change status ──────────────────────────
   @Put(':id/status')
   @UseGuards(RolesGuard)
