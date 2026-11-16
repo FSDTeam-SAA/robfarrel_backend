@@ -9,6 +9,16 @@ import { createFilter, createMeta, createPaginationInfo } from '../../common/uti
 import { SupportStatus } from '../../common/enums/support-status.enum';
 import { RoleType } from '../../common/enums/role.enum';
 
+// last reply on the ticket was written by an admin = customer has to answer
+const lastReplyIsAdmin = {
+  $eq: [{ $arrayElemAt: ['$replies.senderRole', -1] }, RoleType.ADMIN],
+};
+
+const isWaitingOnUser = (status: SupportStatus, replies: any[] = []) =>
+  [SupportStatus.OPEN, SupportStatus.IN_REVIEW].includes(status) &&
+  replies.length > 0 &&
+  replies[replies.length - 1].senderRole === RoleType.ADMIN;
+
 @Injectable()
 export class HelpSupportService {
   constructor(
@@ -54,19 +64,43 @@ export class HelpSupportService {
   }
 
   // ─── Admin: All tickets ─────────────────────────────────
-  async getAllTickets(query: GetTicketsQueryDto) {
+  async getAllTickets(query: GetTicketsQueryDto): Promise<any> {
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 10);
-    const filter = createFilter(query.search, query.date, { searchField: 'subject' });
-    if (query.status) filter.status = query.status;
+    const filter: Record<string, any> = createFilter(query.search, query.date, {
+      searchField: 'subject',
+    });
+    if (query.priority) filter.priority = query.priority;
+
+    if (query.status === 'WAITING_ON_USER') {
+      filter.status = { $in: [SupportStatus.OPEN, SupportStatus.IN_REVIEW] };
+      filter.$expr = lastReplyIsAdmin;
+    } else if (query.status) {
+      filter.status = query.status;
+      // OPEN / IN_REVIEW exclude the tickets shown as "Waiting for User"
+      if ([SupportStatus.OPEN, SupportStatus.IN_REVIEW].includes(query.status as SupportStatus)) {
+        filter.$expr = { $not: [lastReplyIsAdmin] };
+      }
+    }
 
     const total = await this.helpSupportModel.countDocuments(filter);
-    const tickets = await this.helpSupportModel
+    const rows = await this.helpSupportModel
       .find(filter)
       .populate('user', 'name email role')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    const tickets = rows.map(({ replies, ...ticket }) => {
+      const waitingOnUser = isWaitingOnUser(ticket.status, replies);
+      return {
+        ...ticket,
+        repliesCount: replies?.length || 0,
+        waitingOnUser,
+        displayStatus: waitingOnUser ? 'WAITING_ON_USER' : ticket.status,
+      };
+    });
 
     return {
       message: 'Tickets fetched successfully',
@@ -119,5 +153,28 @@ export class HelpSupportService {
     await ticket.save();
 
     return { message: 'Reply added successfully', data: ticket };
+  }
+
+  // ─── Admin: Summary cards ───────────────────────────────
+  async getAdminCards() {
+    const openOrReview = { status: { $in: [SupportStatus.OPEN, SupportStatus.IN_REVIEW] } };
+    const [totalRequests, openReviewCount, waitingOnUser, resolvedClosed] = await Promise.all([
+      this.helpSupportModel.countDocuments(),
+      this.helpSupportModel.countDocuments(openOrReview),
+      this.helpSupportModel.countDocuments({ ...openOrReview, $expr: lastReplyIsAdmin }),
+      this.helpSupportModel.countDocuments({
+        status: { $in: [SupportStatus.RESOLVED, SupportStatus.CLOSED] },
+      }),
+    ]);
+
+    return {
+      message: 'Support cards fetched successfully',
+      data: {
+        totalRequests,
+        activeQueue: openReviewCount - waitingOnUser,
+        waitingOnUser,
+        resolvedClosed,
+      },
+    };
   }
 }

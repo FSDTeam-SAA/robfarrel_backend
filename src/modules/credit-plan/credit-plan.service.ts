@@ -6,6 +6,7 @@ import { CreateCreditPlanDto, UpdateCreditPlanDto } from './dto/credit-plan.dto'
 import { CreditTransaction, CreditTransactionDocument } from '../credit-purchase/schemas/credit-transaction.schema';
 import { RoleType } from '../../common/enums/role.enum';
 import { User, UserDocument } from '../auth/schemas/user.schema';
+import { CreditBurnService } from '../ai/credit-burn.service';
 @Injectable()
 export class CreditPlanService {
   constructor(
@@ -15,6 +16,7 @@ export class CreditPlanService {
     private readonly transactionModel: Model<CreditTransactionDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly creditBurn: CreditBurnService,
   ) {}
 
   async create(dto: CreateCreditPlanDto) {
@@ -67,10 +69,16 @@ export class CreditPlanService {
       { $group: { _id: null, activeCredits: { $sum: '$creditBalance' } } },
     ]);
 
+    const totalCreditsSold = earnings?.totalCreditsSold || 0;
+    const totalCreditsUsed = await this.creditBurn.creditsConsumed();
+
     return {
       totalCreditPackEarnings: earnings?.totalEarnings || 0,
-      totalCreditsSold: earnings?.totalCreditsSold || 0,
-      totalCreditsUsed: 0,
+      totalCreditsSold,
+      totalCreditsUsed,
+      consumptionRatePercent: totalCreditsSold
+        ? Math.round((totalCreditsUsed / totalCreditsSold) * 1000) / 10
+        : 0,
       activeCreditsInCirculation: circulation?.activeCredits || 0,
     };
   }

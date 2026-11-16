@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   ValidateIf,
+  IsIn,
 } from 'class-validator';
 import { SupportTopic } from '../../../common/enums/support-topic.enum';
 import { SupportPriority } from '../../../common/enums/support-priority.enum';
@@ -39,5 +40,9 @@ export class GetTicketsQueryDto {
   @IsOptional() @IsString() limit?: string;
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() date?: string;
-  @IsOptional() @IsEnum(SupportStatus) status?: SupportStatus;
+  @IsOptional()
+  @IsIn([...Object.values(SupportStatus), 'WAITING_ON_USER'])
+  status?: SupportStatus | 'WAITING_ON_USER';
+
+  @IsOptional() @IsEnum(SupportPriority) priority?: SupportPriority;
 }
