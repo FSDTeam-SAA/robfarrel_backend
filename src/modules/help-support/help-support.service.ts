@@ -8,6 +8,8 @@ import { generateTicketNumber } from '../../common/utils/ticket.util';
 import { createFilter, createMeta, createPaginationInfo } from '../../common/utils/pagination.util';
 import { SupportStatus } from '../../common/enums/support-status.enum';
 import { RoleType } from '../../common/enums/role.enum';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 // last reply on the ticket was written by an admin = customer has to answer
 const lastReplyIsAdmin = {
@@ -25,6 +27,7 @@ export class HelpSupportService {
     @InjectModel(HelpSupport.name)
     private readonly helpSupportModel: Model<HelpSupportDocument>,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // ─── Landlord/Tenant: Create ticket ────────────────────
@@ -50,6 +53,13 @@ export class HelpSupportService {
       user: userId,
       ticketNumber,
       attachmentUrl,
+    });
+
+    await this.notifications.notifyAdmins({
+      refId: ticket._id,
+      type: NotificationType.NEW_TICKET,
+      title: 'New Support Ticket',
+      message: `${ticket.ticketNumber}: ${dto.subject} (${dto.priority.toLowerCase()} impact)`,
     });
 
     return { message: 'Support ticket created successfully', data: ticket };
@@ -133,6 +143,14 @@ export class HelpSupportService {
     ticket.status = dto.status;
     await ticket.save();
 
+    await this.notifications.create({
+      user: ticket.user,
+      refId: ticket._id,
+      type: NotificationType.TICKET_STATUS,
+      title: 'Ticket Status Updated',
+      message: `Your ticket ${ticket.ticketNumber} is now ${dto.status.replace(/_/g, ' ').toLowerCase()}.`,
+    });
+
     return { message: 'Ticket status updated successfully', data: ticket };
   }
 
@@ -151,6 +169,23 @@ export class HelpSupportService {
 
     ticket.replies.push({ sender: userId as any, senderRole: role, message: dto.message } as any);
     await ticket.save();
+
+    if (role === RoleType.ADMIN) {
+      await this.notifications.create({
+        user: ticket.user,
+        refId: ticket._id,
+        type: NotificationType.TICKET_REPLY,
+        title: 'New Reply on Your Ticket',
+        message: `Support replied to ticket ${ticket.ticketNumber}.`,
+      });
+    } else {
+      await this.notifications.notifyAdmins({
+        refId: ticket._id,
+        type: NotificationType.TICKET_CUSTOMER_REPLY,
+        title: 'Customer Replied',
+        message: `New reply on ticket ${ticket.ticketNumber}.`,
+      });
+    }
 
     return { message: 'Reply added successfully', data: ticket };
   }

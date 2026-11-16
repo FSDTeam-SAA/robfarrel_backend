@@ -6,6 +6,7 @@ import {
   PropertyAnalysisSchema,
 } from '../property-analysis/schemas/property-analysis.schema';
 import { CloudinaryModule } from '../../infrastructure/cloudinary/cloudinary.module';
+import { NotificationModule } from '../notification/notification.module';
 import {
   AiCallbackController,
   AiController,
@@ -26,6 +27,7 @@ import { CreditUsage, CreditUsageSchema } from './schemas/credit-usage.schema';
     ]),
     AuthModule,
     CloudinaryModule,
+    NotificationModule,
   ],
   controllers: [AiController, AiCallbackController, CreditUsageController],
   providers: [AiClientService, AiService, CreditBurnService],
