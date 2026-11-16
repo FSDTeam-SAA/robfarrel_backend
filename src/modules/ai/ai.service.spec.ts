@@ -139,6 +139,9 @@ function setup(balance = 10, aiResponse: any = {}) {
       publicId,
     })),
   };
+  const notifications = {
+    create: jest.fn(async () => ({})),
+  };
   const service = new AiService(
     runs as any,
     analyses as any,
@@ -146,8 +149,9 @@ function setup(balance = 10, aiResponse: any = {}) {
     creditBurn,
     cloudinary as any,
     configService,
+    notifications as any,
   );
-  return { service, runs, users, usage, aiClient, cloudinary };
+  return { service, runs, users, usage, aiClient, cloudinary, notifications };
 }
 
 const envelope = (requestId: string, overrides: any = {}) => ({

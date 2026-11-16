@@ -23,6 +23,8 @@ import {
 } from './project-mapper.util';
 import { AiRun, AiRunDocument } from './schemas/ai-run.schema';
 import { AiRunsQueryDto } from './dto/ai.dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 const FINAL_STATUSES = ['completed', 'partial', 'failed'];
 
@@ -43,6 +45,7 @@ export class AiService {
     private readonly creditBurn: CreditBurnService,
     private readonly cloudinary: CloudinaryService,
     private readonly configService: ConfigService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async run(user: UserDocument, key: AiModuleKey, dto: Record<string, any>) {
@@ -160,6 +163,7 @@ export class AiService {
         await this.storeVisualizations(run, envelope);
       await this.applyEnvelope(run, envelope);
       await this.creditBurn.chargeRun(run);
+      await this.notifyRun(run);
     }
     return {
       message: 'Callback received',
@@ -298,6 +302,54 @@ export class AiService {
     const publicUrl = this.configService.get<string>('ai.publicUrl');
     const secret = this.configService.get<string>('ai.callbackSigningSecret');
     return publicUrl && secret ? `${publicUrl}/api/v1/ai/callback` : null;
+  }
+
+  private async notifyRun(run: AiRunDocument) {
+    if (run.module !== 'analysis_run' && run.module !== 'visualize') return;
+    try {
+      const analysis: any = run.propertyAnalysis
+        ? await this.propertyAnalysisModel
+            .findById(run.propertyAnalysis)
+            .select('address property.address')
+            .lean()
+        : null;
+      const address = analysis?.property?.address || analysis?.address;
+      const place = address ? ` for ${address}` : '';
+      const isAnalysis = run.module === 'analysis_run';
+      const ok = run.status === 'completed' || run.status === 'partial';
+
+      if (!ok) {
+        await this.notifications.create({
+          user: run.user,
+          refId: run._id,
+          type: NotificationType.AI_RUN_FAILED,
+          title: isAnalysis ? 'Property Analysis Failed' : 'AI Concept Renderings Failed',
+          message: `We could not complete your ${isAnalysis ? 'analysis' : 'renderings'}${place}. Please try again.`,
+        });
+        return;
+      }
+
+      if (isAnalysis) {
+        await this.notifications.create({
+          user: run.user,
+          refId: run._id,
+          type: NotificationType.ANALYSIS_READY,
+          title: 'Property Analysis Ready',
+          message: `Your analysis${place} is complete.`,
+        });
+      } else {
+        const count = (run.results?.image_urls ?? run.results?.images_base64 ?? []).length;
+        await this.notifications.create({
+          user: run.user,
+          refId: run._id,
+          type: NotificationType.RENDERINGS_READY,
+          title: 'AI Concept Renderings Generated',
+          message: `${count} visualization${count === 1 ? ' is' : 's are'} ready${place}.`,
+        });
+      }
+    } catch (err) {
+      this.logger.error(`Run notification failed: ${errorMessage(err)}`);
+    }
   }
 
   private summary(run: AiRunDocument, withResults = false) {
