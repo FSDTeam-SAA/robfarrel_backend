@@ -5,6 +5,7 @@ import { CreditPurchaseService } from './credit-purchase.service';
 import { CreditTransaction, CreditTransactionSchema } from './schemas/credit-transaction.schema';
 import { AuthModule } from '../auth/auth.module';
 import { CreditPlanModule } from '../credit-plan/credit-plan.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CreditPlanModule } from '../credit-plan/credit-plan.module';
     ]),
     AuthModule,
     CreditPlanModule,
+    NotificationModule,
   ],
   controllers: [CreditPurchaseController],
   providers: [CreditPurchaseService],

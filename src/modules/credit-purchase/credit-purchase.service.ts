@@ -15,6 +15,8 @@ import {
   createPaginationInfo,
 } from '../../common/utils/pagination.util';
 import { GetCreditPurchasesQueryDto } from './dto/credit-purchase.dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 @Injectable()
 export class CreditPurchaseService {
@@ -26,6 +28,7 @@ export class CreditPurchaseService {
     private readonly transactionModel: Model<CreditTransactionDocument>,
     private readonly configService: ConfigService,
     private readonly creditPlanService: CreditPlanService,
+    private readonly notifications: NotificationService,
   ) {
     this.stripe = new Stripe(this.configService.get<string>('stripe.secretKey'));
   }
@@ -108,6 +111,22 @@ export class CreditPurchaseService {
       // ── Add credits to the buyer's account ──
       await this.userModel.findByIdAndUpdate(userId, {
         $inc: { creditBalance: Number(creditVolume) },
+      });
+
+      await this.notifications.create({
+        user: userId,
+        refId: transaction._id,
+        type: NotificationType.CREDITS_ADDED,
+        title: 'Credits Added',
+        message: `${creditVolume} credits have been added to your account balance.`,
+      });
+
+      const buyer = await this.userModel.findById(userId).select('name email');
+      await this.notifications.notifyAdmins({
+        refId: transaction._id,
+        type: NotificationType.NEW_PURCHASE,
+        title: 'New Credit Purchase',
+        message: `${creditVolume} credits added to ${buyer?.name || buyer?.email || 'a user'}'s account ($${transaction.amountPaid} paid).`,
       });
     }
 

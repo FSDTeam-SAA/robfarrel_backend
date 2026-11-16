@@ -25,7 +25,7 @@ describe('AiModule', () => {
       ],
     });
     builder.overrideProvider(getConnectionToken()).useValue({});
-    for (const name of ['AiRun', 'CreditUsage', 'PropertyAnalysis', 'User']) {
+    for (const name of ['AiRun', 'CreditUsage', 'PropertyAnalysis', 'User', 'Notification']) {
       builder.overrideProvider(getModelToken(name)).useValue({});
     }
     const moduleRef = await builder.compile();
